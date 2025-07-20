@@ -21,6 +21,7 @@ class PeopleDetectorApp:
 
         self.cap = cv2.VideoCapture(0)
         self.running = True
+        #this is 
 
         # Use HOG person detector
         self.hog = cv2.HOGDescriptor()
