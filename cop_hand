@@ -1,0 +1,71 @@
+import cv2
+import customtkinter as ctk
+from PIL import Image, ImageTk
+from ultralytics import YOLO
+
+class PeopleDetectorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("YOLOv8 People Detection")
+        self.root.geometry("900x700")
+
+        self.label = ctk.CTkLabel(root, text="People Detected: 0", font=("Arial", 24))
+        self.label.pack(pady=10)
+
+        self.video_label = ctk.CTkLabel(root)
+        self.video_label.pack()
+
+        self.cap = cv2.VideoCapture(0)
+        self.running = True
+
+        # Load pretrained YOLOv8 model (nano size for speed)
+        self.model = YOLO("yolov8n.pt")  # change to "yolov8s.pt" for better accuracy
+
+        self.root.after(10, self.update_frame)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def update_frame(self):
+        if not self.running:
+            return
+
+        ret, frame = self.cap.read()
+        if not ret:
+            return
+
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Run inference
+        results = self.model(rgb_frame, verbose=False)[0]
+
+        people_count = 0
+        for box in results.boxes:
+            cls = int(box.cls[0])
+            if self.model.names[cls] == 'person':
+                people_count += 1
+                x1, y1, x2, y2 = map(int, box.xyxy[0])
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        self.label.configure(text=f"People Detected: {people_count}")
+
+        display_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(display_image)
+        imgtk = ImageTk.PhotoImage(image=img)
+
+        self.video_label.imgtk = imgtk
+        self.video_label.configure(image=imgtk)
+
+        self.root.after(10, self.update_frame)
+
+    def on_close(self):
+        self.running = False
+        self.cap.release()
+        self.root.destroy()
+
+
+if __name__ == "__main__":
+    ctk.set_appearance_mode("System")
+    ctk.set_default_color_theme("blue")
+
+    root = ctk.CTk()
+    app = PeopleDetectorApp(root)
+    root.mainloop()
